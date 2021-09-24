@@ -1,0 +1,402 @@
+#September 21
+#simulation
+import Pluto
+Pluto.run(port=1234)
+
+
+using Pluto
+Pluto.run()
+
+using Pkg
+Pkg.add("StatsBase")
+using Plots, StatsBase, Distributions
+using Random, Statistics
+#Generate random data
+
+
+rand() # random number between 0 and 1
+rand(1:6)
+rand([2, 3, 5, 7, 11])
+rand("STAT5125") #randomly select one character between " "
+rand("STAT5125",2) # rand("",n)
+rand('a':'z')
+typeof('a':'z') # check the data type
+
+methods(rand);
+
+# Generate multiple numbers
+[rand(1:6) for i in 1:10]
+rand(1:6, 10)
+
+
+# Generate random matrix form
+rand(3, 5) # Generate random value between 0 and 1 in matrix form
+rand(1:6, 10, 12)
+
+## Random sampling with `sample` and `wsample`
+
+### Uniform sampling with `sample`
+tosses = sample( ["head", "tail"], 100)
+toss_counts = countmap(tosses) # Calculate the frequency of "head" and "tail"
+
+"tail" => 3
+
+typeof("tail" => 3)
+toss_counts["tail"]
+
+prob_tail = toss_counts["tail"] / length(tosses)
+
+### Nonuniform sampling with `wsample`
+# We can set the probability of each case
+countmap(wsample(["head", "tail"], [0.7, 0.3], 100))
+
+#Bernoulli trial
+bernoulli(p) = rand() < p
+bernoulli(0.7)
+
+randn() # Generate random value from the standard normal distribution
+# bind : p = $(@bind p Slider(0.0:0.01:1.0, show_value=true, default=0.7))
+
+p = 0.1
+countmap( [bernoulli(p) for i in 1:1000] )
+
+## Sampling from complicated distributions with the `Distributions` package
+
+# Generate from Normal(1,2)
+rand(Normal(1, 2), 10)
+
+# Generate from standard normal distribution
+randn(10)
+
+# Generate from binomial distribution 
+rand(Binomial(10, 0.8), 20)
+
+# Poisson distribution
+rand(Poisson(1), 10) # random vector
+rand(Poisson(1), 4, 8) # random matrix
+
+# Multivariate distribution MvNormal([mean1, mean2], [cov])
+rand(MvNormal([1,2], [3 2; 2 4]), 5)
+
+    d₁ = 4
+    μ₁ = 1:d₁
+    Σ₁ = [0.5^abs(i-j) for i in 1:d₁, j in 1:d₁]
+    rand(MvNormal(μ₁, Σ₁), 10)
+
+
+## The law of large numbers (LLN) and the central limit theorem (CLT)
+
+# bind : n = $(@bind n Slider(0:10:1000, show_value=true, default=10))
+
+Random.seed!(2021);
+# n1 = 50
+n = 200
+n_seq = (n < 100) ? (1:n) : (1:n÷100:n)
+collect(n_seq)
+
+#Variables are getting small when we increase the number of sample
+    ## Binomial
+    coins = [rand(i) .< 0.5 for i in n_seq];
+    plot(n_seq, mean.(coins), title="Bernoulli", xlab="n", ylab="mean", ylim=(0,1))
+    
+    ## Normal
+    x_normal = [randn(i) for i in n_seq];
+    plot(n_seq, mean.(x_normal), title="Normal", xlab="n", ylab="mean", ylim=(-1,1))
+
+    ## Cauchy
+    x_cauchy = [rand(Cauchy(), i) for i in n_seq];
+    plot(n_seq, mean.(x_cauchy), title="Cauchy", xlab="n", ylab="mean")
+    # Cauchy distribution doesn't have mean -> not affect by sample size in LLN aspect
+
+#CLT
+# bind : Bernoulli: n = $(@bind n_ber Slider(1:1:1000, show_value=true, default=1))
+
+data_ber = [mean(rand(n_ber) .< 0.5) for _ in 1:100000]
+histogram(data_ber, bins=50, title="Bernoulli", legend=false)
+
+# bind : Chi square: n = $(@bind n_chisq Slider(1:1:1000, show_value=true, default=1))
+
+data_chisq = [mean(rand(Chisq(1), n_chisq)) for _ in 1:10000]
+histogram(data_chisq, bins=50, title="Chi square", legend=false)
+
+# bind : T: n = $(@bind n_t Slider(1:1:1000, show_value=true, default=1))
+    data_t = [mean(rand(TDist(3), n_t)) for _ in 1:1000]
+    histogram(data_t, title="T distribution (Cauchy if dof=f)", legend=false)
+
+# Connection between chi square and normal distirbution
+
+# bind : dof = $(@bind dof Slider(1:50, show_value=true))  
+
+histogram(rand(Chisq(dof), 100000), bins=100, leg=false)
+histogram([sum(randn().^2 for i=1:dof ) for i=1:100000], bins=100, leg=false)
+
+
+########################
+# Simulation Questions #
+########################
+
+using Random, Statistics 
+using StatsBase, Distributions
+
+## Elevator waiting time
+Random.seed!(2021);
+n = 1000
+elevator = 1 .+ 14rand(n)
+# elevator = rand(Uniform(1, 15), n)
+up = elevator .< 13
+sum(up) / n
+
+## Intransitive Dice
+Random.seed!(2021);
+A = [2, 2, 4, 4, 9, 9]
+B = [1, 1, 6, 6, 8, 8]
+C = [3, 3, 5, 5, 7, 7]
+
+ab = A .> B'
+mean(ab)
+bc = B .> C'
+mean(ab)
+ca = C .> A'
+mean(ab)
+
+n = 1000
+rollA = rand(A, n)
+rollB = rand(B, n)
+rollC = rand(C, n)
+mean(rollA .> rollB)
+mean(rollB .> rollC)
+mean(rollC .> rollA)
+
+## Two Child Problem
+Random.seed!(2021);
+n = 10
+kids = ["👦", "👧"]
+res = rand(kids, 2, n)
+n_twog = sum((res[1,:] .== "👧") .& (res[2,:] .== "👧"))
+n_oldg = sum(res[1,:] .== "👧")
+n_oneg = sum((res[1,:] .== "👧") .| (res[2,:] .== "👧"))
+n_twog / n_oldg
+n_twog / n_oneg
+
+## Fair Division
+Random.seed!(2021);
+n = 10
+players = ["🐱", "🐭"]
+res = rand(players, 5, n)
+🐱❓ = res .== "🐱"
+🐱2 = sum(eachrow(🐱❓[1:3,:])) .== 2
+# vec(sum(🐱❓[1:3,:], dims=1)) .== 2
+🐱win = sum(eachrow(🐱❓)) .> 2
+sum(🐱2 .& 🐱win) / sum(🐱2)
+
+🐭❓ = res .== "🐭"
+🐭1 = sum(eachrow(🐭❓[1:3,:])) .== 1
+🐭win = sum(eachrow(🐭❓)) .> 2
+sum(🐭1 .& 🐭win) / sum(🐭1)
+
+## Bertrand’s Box
+Random.seed!(2021);
+boxes = [["🪙", "🪙"], ["🪙", "🥈"], ["🥈", "🥈"]]
+n = 100
+boxcoin = Array{Any}(undef, n, 2);
+for i in 1:n
+    boxcoin[i,1] = box = boxes[rand(1:3)]
+    boxcoin[i,2] = box[rand(1:2)]
+end
+gold❓ = boxcoin[:,2] .== "🪙"
+mean(boxcoin[:,1][gold❓] .== [["🪙", "🪙"]])
+
+## Birthday Problem
+using Dates
+
+Random.seed!(2021);
+function birthday(n=23, yours="05-01")
+    # n is the number of people
+    # yours is your birthday with format "mm-dd"
+    N = 365 # number of days each year
+    room = rand(1:N, n) # randomly choose n people
+    doy = dayofyear(Date(yours, "mm-day"))
+    # convert the convert your birthday to day of year
+    share = length(unique(room)) < n
+    ## if there are people sharing a common birthday
+    same = doy ∈ room # if someone's birthday the same as yours
+    return [share, same]
+end
+
+@time res = [birthday(23) for i in 1:10000];
+mean(res)
+res = [birthday(253) for i in 1:10000];
+mean(res)
+
+## ## Birth problem direct calculation
+function P(n)
+    p = 1
+    for i in 1:n
+        p *= (365 - i + 1) / 365
+    end
+    return 1-p
+end
+P.([4, 16, 23, 32, 40, 56])
+1 - prod(BigInt.((365-22):365)) / BigInt(365)^23
+
+n = [4, 16, 23, 32, 40, 56, 252, 253, 254]
+P2 = 1 .- (364/365).^n
+
+500/(2.4*10^6)
+1 - BigFloat((2.4*10^6-1)/(2.4*10^6))^500
+
+
+## Henry’s Choice
+Random.seed!(2021);
+n = 10 # number of simulations
+
+spin_shot = rand(1:6, 2, n)
+## Assume that the bullets are in chambers 1 and 2_
+first_blank = spin_shot[1,:] .> 2
+prob1 = sum(spin_shot[2,first_blank] .<= 2) / sum(first_blank)
+
+function twoshots() 
+    first_shot = rand(1:6)
+    second_shot = first_shot % 6 + 1
+    [first_shot, second_shot]
+end
+shot_again = [twoshots() for i in 1:n]
+first_blank = first.(shot_again) .> 2
+mean(last.(shot_again[first_blank]) .<= 2)
+
+shot_again = [rand(1:6) .|> [x->x, x->x%6+1] for i in 1:n]
+first_blank = first.(shot_again) .> 2
+mean(last.(shot_again[first_blank]) .<= 2)
+
+## Monty Hall problem
+# using Base.Iterators
+# host = rand(rest(1:nds, choice)) # rest is in Base.Iterators
+Random.seed!(2021);
+function whichDoor(choice; nds=3)
+    prize = rand(1:nds)
+    if prize == choice
+        host = rand(setdiff(1:nds, choice)) # rest is in Base.Iterators
+    else
+        host = rand(setdiff(1:nds, [choice, prize]))
+    end
+    switch = rand(setdiff(1:nds, [choice, prize]))
+    return Dict{String,Int32}("host"=>host,
+                              "prize"=>prize,
+                              "switch"=>switch)
+end
+
+nds = 3
+whichDoor(1)
+
+doors = fill("🚪", nds) # ["🚪", "🚪", "🚪"]
+choice = 1
+doors[choice] *= "👈"
+onegame = whichDoor(choice)
+doors[onegame["host"]] *= "🐐"
+doors
+doors[onegame["prize"]] *= "🚗"
+
+nds = 3
+n = 100
+results = Vector{Any}(undef, n)
+for i in eachindex(results)
+    doors = fill("🚪", nds)
+    choice = 1
+    doors[choice] *= "👈"
+    onegame = whichDoor(choice, nds=nds)
+    doors[onegame["host"]] *= "🐐"
+    doors[onegame["switch"]] *= "👌"
+    doors[onegame["prize"]] *= "🚗"
+    results[i] = doors
+end
+
+mean([any(results[i] .== "🚪👈🚗") for i in eachindex(results)])
+mean([any(results[i] .== "🚪👌🚗") for i in 1:n])
+
+## 100 prisoners problem
+Random.seed!(2021);
+n = 100 # number of prisoners
+prisoners = 1:n # prisoners' numbers
+# simulate the procedure of randomly open 50 (n/2) drawers
+function open_random(prisoners, n=length(prisoners)) 
+    drawers = shuffle(1:n)
+    # randomly put prisoners’ numbers in the drawers
+    pardon = true # initialize pardon to be true
+    for i in prisoners
+        opens = rand(drawers, n÷2)
+        # randomly open n/2 drawers
+        if !(i in opens)
+            # if any prisoner does not find his number, all prisoners die
+            pardon = false
+            break
+        end
+    end
+    return pardon
+end
+open_random(prisoners)
+
+function open_smart(prisoners, n=length(prisoners)) 
+    drawers = shuffle(1:n)
+    pardon = true
+    for i in prisoners
+        opens = fill(n+1, n÷2) # Vector{Int32}(undef, n÷2)
+        @inbound opens[1] = drawers[i]
+        @inbound for j in 2:n÷2
+            if opens[j-1] == i
+                break
+            else
+               @inbound opens[j] = drawers[opens[j-1]]
+            end
+        end
+        if !(i in opens)
+            pardon = false
+            break
+        end
+    end
+    return pardon
+end
+
+open_smart(prisoners)
+# survival probability of randomly open
+mean([open_random(prisoners) for i in 1:10000])
+# survival probability of using the better strategy
+@time mean([open_smart(prisoners) for i in 1:100000])
+
+@time begin
+    c = 0
+    for i in 1:100000
+        c += open_smart(prisoners)
+    end
+    c / 100000
+end
+
+# Banach Match Problem
+function BMP(n)
+    l = r = n
+    for i in 1:2n
+        (rand() < 0.5) ? (l -= 1) : (r -=1)
+        if l * r == 0
+            return max(l, r)
+        end
+    end
+end
+
+n = 100
+m = 3
+simu = [BMP(n) for i in 1:100000]
+counts(simu) ./ length(simu)
+bar(counts(simu) ./ length(simu))
+mean(simu)
+© 2021 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
+Loading complete
